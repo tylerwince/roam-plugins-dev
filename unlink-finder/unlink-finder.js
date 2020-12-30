@@ -75,6 +75,17 @@ function unlinkFinder() {
     let pages = getAllPages();
     matchFound = false
 
+    if (document.getElementById("unlinkFinderIcon").hasAttribute("status") == "off") {
+        document.getElementById("unlinkFinderIcon").setAttribute("status", "on")
+        do {
+            let blocks = document.getElementsByClassName("roam-block");
+            matchFound = findTargetNodes(blocks, pages)
+        } while (matchFound == true)
+    } else {
+        document.getElementById("unlinkFinderIcon").setAttribute("status", "off")
+        console.log("just going off for now.")
+    }
+
     do {
         let blocks = document.getElementsByClassName("roam-block");
         matchFound = findTargetNodes(blocks, pages)
@@ -148,6 +159,7 @@ function unlinkFinderButton() {
       spanOne.appendChild(spanTwo);
       var unlinkFinderIcon = document.createElement('span');
       unlinkFinderIcon.id = 'unlinkFinderIcon';
+      unlinkFinderIcon.setAttribute("status", "off")
       unlinkFinderIcon.classList.add('bp3-icon-search-around', 'bp3-button', 'bp3-minimal', 'bp3-small');
       spanTwo.appendChild(unlinkFinderIcon);
       var roamTopbar = document.getElementsByClassName("roam-topbar");
