@@ -75,7 +75,7 @@ function unlinkFinder() {
     let pages = getAllPages();
     matchFound = false
 
-    if (document.getElementById("unlinkFinderIcon").hasAttribute("status") == "off") {
+    if (document.getElementById("unlinkFinderIcon").getAttribute("status") == "off") {
         document.getElementById("unlinkFinderIcon").setAttribute("status", "on")
         do {
             let blocks = document.getElementsByClassName("roam-block");
