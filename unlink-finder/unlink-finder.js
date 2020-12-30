@@ -78,6 +78,7 @@ function unlinkFinder() {
     if (document.getElementById("unlinkFinderIcon").getAttribute("status") == "off") {
         document.getElementById("unlinkFinderIcon").setAttribute("status", "on")
         addUnlinkFinderLegend()
+        reAddUnlinkTargets()
         do {
             let blocks = document.getElementsByClassName("roam-block");
             matchFound = findTargetNodes(blocks, pages)
@@ -85,13 +86,8 @@ function unlinkFinder() {
     } else {
         document.getElementById("unlinkFinderIcon").setAttribute("status", "off")
         removeUnlinkFinderLegend()
-        console.log("just going off for now.")
+        removeUnlinkTargets()
     }
-
-    do {
-        let blocks = document.getElementsByClassName("roam-block");
-        matchFound = findTargetNodes(blocks, pages)
-    } while (matchFound == true)
 }
 
 function spanWrapper(node, pages) {
@@ -150,6 +146,64 @@ function spanWrapper(node, pages) {
         return false
     }
     return false
+}
+      
+function removeUnlinkTargets() {
+    targetNodes = document.getElementsByClassName("unlink-finder")
+    for (i = 0; i < targetNodes.length; i++) {
+        if (targetNodes[i].classList.contains("unlink-finder-legend")) {
+            continue
+        }
+        if (targetNodes[i].classList.contains("exact-word-match")) {
+            targetNodes[i].classList.remove("exact-word-match")
+            targetNodes[i].classList.add("exact-word-match-inactive")
+            targetNodes[i].style.cssText = ""
+        }
+        if (targetNodes[i].classList.contains("fuzzy-word-match")) {
+            targetNodes[i].classList.remove("fuzzy-word-match")
+            targetNodes[i].classList.add("fuzzy-word-match-inactive")
+            targetNodes[i].style.cssText = ""
+        }
+        if (targetNodes[i].classList.contains("partial-word-match")) {
+            targetNodes[i].classList.remove("partial-word-match")
+            targetNodes[i].classList.add("partial-word-match-inactive")
+            targetNodes[i].style.cssText = ""
+        }
+        if (targetNodes[i].classList.contains("redundant-word-match")) {
+            targetNodes[i].classList.remove("redundant-word-match")
+            targetNodes[i].classList.add("redundant-word-match-inactive")
+            targetNodes[i].style.cssText = ""
+        }
+    }
+}
+
+function reAddUnlinkTargets() {
+    targetNodes = document.getElementsByClassName("unlink-finder")
+    for (i = 0; i < targetNodes.length; i++) {
+        if (targetNodes[i].classList.contains("unlink-finder-legend")) {
+            continue
+        }
+        if (targetNodes[i].classList.contains("exact-word-match-inactive")) {
+            targetNodes[i].classList.remove("exact-word-match-inactive")
+            targetNodes[i].classList.add("exact-word-match")
+            targetNodes[i].style.cssText = "text-decoration: underline; text-decoration-style: dotted;"
+        }
+        if (targetNodes[i].classList.contains("fuzzy-word-match-inactive")) {
+            targetNodes[i].classList.remove("fuzzy-word-match-inactive")
+            targetNodes[i].classList.add("fuzzy-word-match")
+            targetNodes[i].style.cssText = "text-decoration: underline; text-decoration-style: dotted; text-decoration-color: gray;"
+        }
+        if (targetNodes[i].classList.contains("partial-word-match-inactive")) {
+            targetNodes[i].classList.remove("partial-word-match-inactive")
+            targetNodes[i].classList.add("partial-word-match")
+            targetNodes[i].style.cssText = "text-decoration: underline; text-decoration-style: dotted; text-decoration-color: lightgray;"
+        }
+        if (targetNodes[i].classList.contains("redundant-word-match-inactive")) {
+            targetNodes[i].classList.remove("redundant-word-match-inactive")
+            targetNodes[i].classList.add("redundant-word-match")
+            targetNodes[i].style.cssText = "text-decoration: underline; text-decoration-style: dotted; text-decoration-color: transparent"
+        }
+    }
 }
       
 function removeUnlinkFinderLegend() {
