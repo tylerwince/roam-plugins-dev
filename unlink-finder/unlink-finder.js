@@ -23,46 +23,51 @@ function pageTaggedInParent(node, page) {
 }
 
 function findTargetNodes(blocks, pages) {
-    for (i = 0; i < blocks.length; i++) {
-        // all blocks only have 1 top level child node, a span.
-        // skip to the second level of children
-        for (j = 0; j < blocks[i].childNodes[0].childNodes.length; j++) {
-            node = blocks[i].childNodes[0].childNodes[j];
-            if (node.nodeType == 3) { // only text, no more childrens
-                if (spanWrapper(node, pages) == true) {
-                    return true
-                }
-                continue
-            }
-            if (node.nodeType == 1) { // element node type, need to dig deeper
-                // these are already linked, skip
-                if (node.hasAttribute("data-link-title")
-                    || node.hasAttribute("data-tag")
-                    || node.hasAttribute("recommend")) {
+    matched = false
+    loop1:
+        for (i = 0; i < blocks.length; i++) {
+            // console.log(blocks[i])
+            // all blocks only have 1 top level child node, a span.
+            // skip to the second level of children
+            for (j = 0; j < blocks[i].childNodes[0].childNodes.length; j++) {
+                node = blocks[i].childNodes[0].childNodes[j];
+                if (node.nodeType == 3) { // only text, no more childrens
+                    if (spanWrapper(node, pages) == true) {
+                        matched = true
+                        continue loop1
+                    }
                     continue
                 }
-                if (node.hasChildNodes()) {
-                    for (k = 0; k < node.childNodes.length; k++) {
-                        if (node.childNodes[k].nodeType == 3) { // only text, no more childrens
-                            if (spanWrapper(node.childNodes[k])) {
-                                return true
-                            }
-                            continue
-                        }
-                        if (node.nodeType == 1) { // element node type, need to dig deeper
-                            // these are already linked, skip
-                            if (node.childNodes[k].hasAttribute("data-link-title")
-                                || node.childNodes[k].hasAttribute("data-tag")
-                                || node.childNodes[k].hasAttribute("recommend")) {
+                if (node.nodeType == 1) { // element node type, need to dig deeper
+                    // these are already linked, skip
+                    if (node.hasAttribute("data-link-title")
+                        || node.hasAttribute("data-tag")
+                        || node.hasAttribute("recommend")) {
+                        continue
+                    }
+                    if (node.hasChildNodes()) {
+                        for (k = 0; k < node.childNodes.length; k++) {
+                            if (node.childNodes[k].nodeType == 3) { // only text, no more childrens
+                                if (spanWrapper(node.childNodes[k], pages)) {
+                                    matched = true
+                                    continue loop1
+                                }
                                 continue
+                            }
+                            if (node.nodeType == 1) { // element node type, need to dig deeper
+                                // these are already linked, skip
+                                if (node.childNodes[k].hasAttribute("data-link-title")
+                                    || node.childNodes[k].hasAttribute("data-tag")
+                                    || node.childNodes[k].hasAttribute("recommend")) {
+                                    continue
+                                }
                             }
                         }
                     }
                 }
             }
         }
-    }
-    return false
+        return matched;
 }
 
 function runUnlinkFinder() {
@@ -86,20 +91,25 @@ function unlinkFinder() {
     matchFound = false
 
     if (document.getElementById("unlinkFinderIcon").getAttribute("status") == "off") {
+        var t0 = performance.now()
         document.getElementById("unlinkFinderIcon").setAttribute("status", "on")
         addUnlinkFinderLegend()
         reAddUnlinkTargets()
+        counter = 0
         do {
+            counter += 1
             let blocks = document.getElementsByClassName("roam-block");
             matchFound = findTargetNodes(blocks, unlinkFinderPages)
         } while (matchFound == true)
         document.addEventListener("blur", runUnlinkFinder, true)
+        var t1 = performance.now()
     } else {
         document.getElementById("unlinkFinderIcon").setAttribute("status", "off")
         removeUnlinkFinderLegend()
         removeUnlinkTargets()
         document.removeEventListener("blur", runUnlinkFinder, true)
     }
+    console.log("It took " + (t1 - t0) + " to run this " + counter + " times.")
 }
 
 function spanWrapper(node, pages) {
