@@ -8,6 +8,26 @@ function getAllPages() {
     return pageNames
 }
 
+function getAllAliases() {
+    aliasMap = new Map()
+
+    aliasPages = window.roamAlphaAPI
+        .q(
+            `[:find (pull ?parentPage [*]) :where [?parentPage :block/children ?referencingBlock] [?referencingBlock :block/refs ?referencedPage] [?referencedPage :node/title "Aliases"]]`
+        )
+        .map((p) => p[0]);
+
+
+    for (i = 0; i < aliasPages.length; i++) {
+        aliases = aliasPages[i].attrs[0][2].value.split(",")
+        for (j = 0; j < aliases.length; j++) {
+            aliasMap.set(aliases[j].trim(), aliasPages[i].title)
+        }
+    }
+
+    return aliasMap
+}
+
 function pageTaggedInParent(node, page) {
     parent = node.parentElement
     while (parent.classList.contains("roam-article") == false) {
@@ -22,52 +42,52 @@ function pageTaggedInParent(node, page) {
     return false
 }
 
-function findTargetNodes(blocks, pages) {
+function findTargetNodes(blocks, pages, aliases) {
     matched = false
     loop1:
-        for (i = 0; i < blocks.length; i++) {
-            // console.log(blocks[i])
-            // all blocks only have 1 top level child node, a span.
-            // skip to the second level of children
-            for (j = 0; j < blocks[i].childNodes[0].childNodes.length; j++) {
-                node = blocks[i].childNodes[0].childNodes[j];
-                if (node.nodeType == 3) { // only text, no more childrens
-                    if (spanWrapper(node, pages) == true) {
-                        matched = true
-                        continue loop1
-                    }
+    for (i = 0; i < blocks.length; i++) {
+        // console.log(blocks[i])
+        // all blocks only have 1 top level child node, a span.
+        // skip to the second level of children
+        for (j = 0; j < blocks[i].childNodes[0].childNodes.length; j++) {
+            node = blocks[i].childNodes[0].childNodes[j];
+            if (node.nodeType == 3) { // only text, no more childrens
+                if (spanWrapper(node, pages, aliases) == true) {
+                    matched = true
+                    continue loop1
+                }
+                continue
+            }
+            if (node.nodeType == 1) { // element node type, need to dig deeper
+                // these are already linked, skip
+                if (node.hasAttribute("data-link-title")
+                    || node.hasAttribute("data-tag")
+                    || node.hasAttribute("recommend")) {
                     continue
                 }
-                if (node.nodeType == 1) { // element node type, need to dig deeper
-                    // these are already linked, skip
-                    if (node.hasAttribute("data-link-title")
-                        || node.hasAttribute("data-tag")
-                        || node.hasAttribute("recommend")) {
-                        continue
-                    }
-                    if (node.hasChildNodes()) {
-                        for (k = 0; k < node.childNodes.length; k++) {
-                            if (node.childNodes[k].nodeType == 3) { // only text, no more childrens
-                                if (spanWrapper(node.childNodes[k], pages)) {
-                                    matched = true
-                                    continue loop1
-                                }
-                                continue
+                if (node.hasChildNodes()) {
+                    for (k = 0; k < node.childNodes.length; k++) {
+                        if (node.childNodes[k].nodeType == 3) { // only text, no more childrens
+                            if (spanWrapper(node.childNodes[k], pages, aliases)) {
+                                matched = true
+                                continue loop1
                             }
-                            if (node.nodeType == 1) { // element node type, need to dig deeper
-                                // these are already linked, skip
-                                if (node.childNodes[k].hasAttribute("data-link-title")
-                                    || node.childNodes[k].hasAttribute("data-tag")
-                                    || node.childNodes[k].hasAttribute("recommend")) {
-                                    continue
-                                }
+                            continue
+                        }
+                        if (node.nodeType == 1) { // element node type, need to dig deeper
+                            // these are already linked, skip
+                            if (node.childNodes[k].hasAttribute("data-link-title")
+                                || node.childNodes[k].hasAttribute("data-tag")
+                                || node.childNodes[k].hasAttribute("recommend")) {
+                                continue
                             }
                         }
                     }
                 }
             }
         }
-        return matched;
+    }
+    return matched;
 }
 
 function runUnlinkFinder() {
@@ -75,7 +95,7 @@ function runUnlinkFinder() {
     setTimeout(function () {
         do {
             let blocks = document.getElementsByClassName("roam-block");
-            matchFound = findTargetNodes(blocks, unlinkFinderPages)
+            matchFound = findTargetNodes(blocks, unlinkFinderPages, unlinkFinderAliases)
         } while (matchFound == true)
     }, 1000)
 }
@@ -88,6 +108,7 @@ function unlinkFinder() {
     // blocks on the page where the button is clicked
     // get all pages in the graph
     unlinkFinderPages = getAllPages();
+    unlinkFinderAliases = getAllAliases();
     matchFound = false
 
     if (document.getElementById("unlinkFinderIcon").getAttribute("status") == "off") {
@@ -99,7 +120,7 @@ function unlinkFinder() {
         do {
             counter += 1
             let blocks = document.getElementsByClassName("roam-block");
-            matchFound = findTargetNodes(blocks, unlinkFinderPages)
+            matchFound = findTargetNodes(blocks, unlinkFinderPages, unlinkFinderAliases)
         } while (matchFound == true)
         document.addEventListener("blur", runUnlinkFinder, true)
         var t1 = performance.now()
@@ -112,7 +133,7 @@ function unlinkFinder() {
     console.log("It took " + (t1 - t0) + " to run this " + counter + " times.")
 }
 
-function spanWrapper(node, pages) {
+function spanWrapper(node, pages, aliases) {
     try {
         for (l = 0; l < pages.length; l++) {
             if (pages[l].length < 2) {
@@ -161,75 +182,114 @@ function spanWrapper(node, pages) {
                 return true
             }
         }
+        for (const [key, value] of aliases.entries()) {
+            if (node.textContent.toLowerCase().includes(key.toLowerCase())) {
+                // iterate over the childNodes and do stuff on childNodes that 
+                // don't have the data-link-title attribute
+                start = node.textContent.toLowerCase().indexOf(key.toLowerCase())
+                end = start + key.length
+                beforeLinkText = node.textContent.slice(0, start)
+                firstCharBeforeMatch = node.textContent.slice(start - 1)[0]
+                firstCharAfterMatch = node.textContent.slice(start).substr(key.length)[0]
+                linkText = node.textContent.slice(start, end)
+                afterLinkText = node.textContent.slice(end)
+                // create span with page name
+                matchSpan = document.createElement("span")
+                matchSpan.classList.add("unlink-finder")
+                matchSpan.setAttribute("data-text", value)
+                matchSpan.style.cssText += "text-decoration: underline; text-decoration-style: dotted; position:relative;"
+                matchSpan.classList.add("alias-word-match")
+                matchSpan.setAttribute("recommend", "underline")
+                matchSpan.innerText = linkText
+                // truncate existing text node
+                node.textContent = beforeLinkText
+                // add that span after the text node
+                node.parentNode.insertBefore(matchSpan, node.nextSibling)
+                // create a text node with the remainder text
+                remainderText = document.createTextNode(afterLinkText)
+                // add that remainder text after inserted node
+                node.parentNode.insertBefore(remainderText, node.nextSibling.nextSibling)
+                return true
+            }
+        }
     }
     catch (err) {
         //console.log(err)
         //console.log(node)
         return false
     }
-    return false
 }
 
 function removeUnlinkTargets() {
-    targetNodes = document.getElementsByClassName("unlink-finder")
+    targetNodes = document.getElementsByClassName("unlink-finder");
     for (i = 0; i < targetNodes.length; i++) {
         if (targetNodes[i].classList.contains("unlink-finder-legend")) {
-            continue
+            continue;
         }
         if (targetNodes[i].classList.contains("exact-word-match")) {
-            targetNodes[i].classList.remove("exact-word-match")
-            targetNodes[i].classList.add("exact-word-match-inactive")
-            targetNodes[i].style.cssText = ""
+            targetNodes[i].classList.remove("exact-word-match");
+            targetNodes[i].classList.add("exact-word-match-inactive");
+            targetNodes[i].style.cssText = "";
         }
         if (targetNodes[i].classList.contains("fuzzy-word-match")) {
-            targetNodes[i].classList.remove("fuzzy-word-match")
-            targetNodes[i].classList.add("fuzzy-word-match-inactive")
-            targetNodes[i].style.cssText = ""
+            targetNodes[i].classList.remove("fuzzy-word-match");
+            targetNodes[i].classList.add("fuzzy-word-match-inactive");
+            targetNodes[i].style.cssText = "";
         }
         if (targetNodes[i].classList.contains("partial-word-match")) {
-            targetNodes[i].classList.remove("partial-word-match")
-            targetNodes[i].classList.add("partial-word-match-inactive")
-            targetNodes[i].style.cssText = ""
+            targetNodes[i].classList.remove("partial-word-match");
+            targetNodes[i].classList.add("partial-word-match-inactive");
+            targetNodes[i].style.cssText = "";
         }
         if (targetNodes[i].classList.contains("redundant-word-match")) {
-            targetNodes[i].classList.remove("redundant-word-match")
-            targetNodes[i].classList.add("redundant-word-match-inactive")
-            targetNodes[i].style.cssText = ""
+            targetNodes[i].classList.remove("redundant-word-match");
+            targetNodes[i].classList.add("redundant-word-match-inactive");
+            targetNodes[i].style.cssText = "";
+        }
+        if (targetNodes[i].classList.contains("alias-word-match")) {
+            targetNodes[i].classList.remove("alias-word-match");
+            targetNodes[i].classList.add("alias-word-match-inactive");
+            targetNodes[i].style.cssText = "";
         }
     }
 }
 
 function reAddUnlinkTargets() {
-    targetNodes = document.getElementsByClassName("unlink-finder")
+    targetNodes = document.getElementsByClassName("unlink-finder");
     for (i = 0; i < targetNodes.length; i++) {
         if (targetNodes[i].classList.contains("unlink-finder-legend")) {
-            continue
+            continue;
         }
         if (targetNodes[i].classList.contains("exact-word-match-inactive")) {
-            targetNodes[i].classList.remove("exact-word-match-inactive")
-            targetNodes[i].classList.add("exact-word-match")
-            targetNodes[i].style.cssText = "text-decoration: underline; text-decoration-style: dotted;"
+            targetNodes[i].classList.remove("exact-word-match-inactive");
+            targetNodes[i].classList.add("exact-word-match");
+            targetNodes[i].style.cssText = "text-decoration: underline; text-decoration-style: dotted;";
         }
         if (targetNodes[i].classList.contains("fuzzy-word-match-inactive")) {
-            targetNodes[i].classList.remove("fuzzy-word-match-inactive")
-            targetNodes[i].classList.add("fuzzy-word-match")
-            targetNodes[i].style.cssText = "text-decoration: underline; text-decoration-style: dotted; text-decoration-color: gray;"
+            targetNodes[i].classList.remove("fuzzy-word-match-inactive");
+            targetNodes[i].classList.add("fuzzy-word-match");
+            targetNodes[i].style.cssText = "text-decoration: underline; text-decoration-style: dotted; text-decoration-color: gray;";
         }
         if (targetNodes[i].classList.contains("partial-word-match-inactive")) {
-            targetNodes[i].classList.remove("partial-word-match-inactive")
-            targetNodes[i].classList.add("partial-word-match")
-            targetNodes[i].style.cssText = "text-decoration: underline; text-decoration-style: dotted; text-decoration-color: lightgray;"
+            targetNodes[i].classList.remove("partial-word-match-inactive");
+            targetNodes[i].classList.add("partial-word-match");
+            targetNodes[i].style.cssText = "text-decoration: underline; text-decoration-style: dotted; text-decoration-color: lightgray;";
         }
         if (targetNodes[i].classList.contains("redundant-word-match-inactive")) {
-            targetNodes[i].classList.remove("redundant-word-match-inactive")
-            targetNodes[i].classList.add("redundant-word-match")
-            targetNodes[i].style.cssText = "text-decoration: underline; text-decoration-style: dotted; text-decoration-color: transparent"
+            targetNodes[i].classList.remove("redundant-word-match-inactive");
+            targetNodes[i].classList.add("redundant-word-match");
+            targetNodes[i].style.cssText = "text-decoration: underline; text-decoration-style: dotted; text-decoration-color: transparent";
+        }
+        if (targetNodes[i].classList.contains("alias-word-match-inactive")) {
+            targetNodes[i].classList.remove("alias-word-match-inactive");
+            targetNodes[i].classList.add("alias-word-match");
+            targetNodes[i].style.cssText = "text-decoration: underline; text-decoration-style: dotted; position:relative";
         }
     }
 }
 
 function removeUnlinkFinderLegend() {
-    document.getElementById("unlink-finder-legend").remove()
+    document.getElementById("unlink-finder-legend").remove();
 }
 
 function addUnlinkFinderLegend() {
@@ -237,42 +297,50 @@ function addUnlinkFinderLegend() {
         var outerDiv = document.createElement('div');
         outerDiv.classList.add('unlink-finder-legend');
         outerDiv.id = 'unlink-finder-legend';
-        outerDiv.setAttribute("style", "margin-left: 4px;")
+        outerDiv.setAttribute("style", "margin-left: 4px;");
         outerDiv.style.cssText = "border-style: groove;"
         var LegendKey = document.createElement('span');
         LegendKey.classList.add('unlink-finder-legend');
         LegendKey.classList.add('unlink-finder');
-        LegendKey.innerText = "Match Types: "
-        LegendKey.style.cssText = "margin-left: 4px; margin-right: 4px;"
+        LegendKey.innerText = "Match Types: ";
+        LegendKey.style.cssText = "margin-left: 4px; margin-right: 4px;";
         var exactWordMatch = document.createElement('span');
         exactWordMatch.classList.add('unlink-finder-legend');
         exactWordMatch.classList.add('exact-word-match');
         exactWordMatch.classList.add('unlink-finder');
-        exactWordMatch.innerText = "Exact"
-        exactWordMatch.style.cssText = "margin-right: 4px; text-decoration: underline; text-decoration-style: dotted;"
+        exactWordMatch.innerText = "Exact";
+        exactWordMatch.style.cssText = "margin-right: 4px; text-decoration: underline; text-decoration-style: dotted;";
         var fuzzyWordMatch = document.createElement('span');
         fuzzyWordMatch.classList.add('unlink-finder-legend');
         fuzzyWordMatch.classList.add('fuzzy-word-match');
         fuzzyWordMatch.classList.add('unlink-finder');
-        fuzzyWordMatch.innerText = "Fuzzy"
-        fuzzyWordMatch.style.cssText = "margin-right: 4px; text-decoration: underline; text-decoration-style: dotted; text-decoration-color: gray;"
+        fuzzyWordMatch.innerText = "Fuzzy";
+        fuzzyWordMatch.style.cssText = "margin-right: 4px; text-decoration: underline; text-decoration-style: dotted; text-decoration-color: gray;";
         var partialWordMatch = document.createElement('span');
         partialWordMatch.classList.add('unlink-finder-legend');
         partialWordMatch.classList.add('partial-word-match');
         partialWordMatch.classList.add('unlink-finder');
-        partialWordMatch.innerText = "Partial"
-        partialWordMatch.style.cssText = "margin-right: 4px; text-decoration: underline; text-decoration-style: dotted; text-decoration-color: lightgray;"
+        partialWordMatch.innerText = "Partial";
+        partialWordMatch.style.cssText = "margin-right: 4px; text-decoration: underline; text-decoration-style: dotted; text-decoration-color: lightgray;";
         var redundantWordMatch = document.createElement('span');
         redundantWordMatch.classList.add('unlink-finder-legend');
         redundantWordMatch.classList.add('redundant-word-match');
         redundantWordMatch.classList.add('unlink-finder');
-        redundantWordMatch.innerText = "Redundant"
-        redundantWordMatch.style.cssText = "margin-right: 4px; text-decoration: underline; text-decoration-style: dotted; text-decoration-color: transparent;"
+        redundantWordMatch.innerText = "Redundant";
+        redundantWordMatch.style.cssText = "margin-right: 4px; text-decoration: underline; text-decoration-style: dotted; text-decoration-color: transparent;";
+        var aliasWordMatch = document.createElement('span');
+        aliasWordMatch.classList.add('unlink-finder-legend');
+        aliasWordMatch.classList.add('alias-word-match');
+        aliasWordMatch.classList.add('unlink-finder');
+        aliasWordMatch.setAttribute("data-text", "Actual Page Name")
+        aliasWordMatch.innerText = "Alias";
+        aliasWordMatch.style.cssText = "margin-right: 4px; text-decoration: underline; text-decoration-style: dotted; text-decoration-color: green; position:relative;";
         outerDiv.appendChild(LegendKey);
         outerDiv.appendChild(exactWordMatch);
         outerDiv.appendChild(fuzzyWordMatch);
         outerDiv.appendChild(partialWordMatch);
         outerDiv.appendChild(redundantWordMatch);
+        outerDiv.appendChild(aliasWordMatch);
         var roamTopbar = document.getElementsByClassName("roam-topbar");
         roamTopbar[0].childNodes[0].insertBefore(outerDiv, roamTopbar[0].childNodes[0].childNodes[2]);
     }
