@@ -17,11 +17,15 @@ function getAllAliases() {
         )
         .map((p) => p[0]);
 
-
     for (i = 0; i < aliasPages.length; i++) {
-        aliases = aliasPages[i].attrs[0][2].value.split(",")
-        for (j = 0; j < aliases.length; j++) {
-            aliasMap.set(aliases[j].trim(), aliasPages[i].title)
+        try {
+            aliases = aliasPages[i].attrs[0][2].value.split(",")
+            for (j = 0; j < aliases.length; j++) {
+                aliasMap.set(aliases[j].trim(), aliasPages[i].title)
+            }
+        }
+        catch (err) {
+            continue
         }
     }
 
@@ -135,6 +139,36 @@ function unlinkFinder() {
 
 function spanWrapper(node, pages, aliases) {
     try {
+        for (const [key, value] of aliases.entries()) {
+            if (node.textContent.toLowerCase().includes(key.toLowerCase())) {
+                // iterate over the childNodes and do stuff on childNodes that 
+                // don't have the data-link-title attribute
+                start = node.textContent.toLowerCase().indexOf(key.toLowerCase())
+                end = start + key.length
+                beforeLinkText = node.textContent.slice(0, start)
+                firstCharBeforeMatch = node.textContent.slice(start - 1)[0]
+                firstCharAfterMatch = node.textContent.slice(start).substr(key.length)[0]
+                linkText = node.textContent.slice(start, end)
+                afterLinkText = node.textContent.slice(end)
+                // create span with page name
+                matchSpan = document.createElement("span")
+                matchSpan.classList.add("unlink-finder")
+                matchSpan.setAttribute("data-text", value)
+                matchSpan.style.cssText += "text-decoration: underline; text-decoration-style: dotted; text-decoration-color: green; position:relative;"
+                matchSpan.classList.add("alias-word-match")
+                matchSpan.setAttribute("recommend", "underline")
+                matchSpan.innerText = linkText
+                // truncate existing text node
+                node.textContent = beforeLinkText
+                // add that span after the text node
+                node.parentNode.insertBefore(matchSpan, node.nextSibling)
+                // create a text node with the remainder text
+                remainderText = document.createTextNode(afterLinkText)
+                // add that remainder text after inserted node
+                node.parentNode.insertBefore(remainderText, node.nextSibling.nextSibling)
+                return true
+            }
+        }
         for (l = 0; l < pages.length; l++) {
             if (pages[l].length < 2) {
                 continue
@@ -170,36 +204,6 @@ function spanWrapper(node, pages, aliases) {
                     matchSpan.classList.remove("exact-word-match")
                     matchSpan.style.cssText += "text-decoration-color: transparent;";
                 }
-                matchSpan.innerText = linkText
-                // truncate existing text node
-                node.textContent = beforeLinkText
-                // add that span after the text node
-                node.parentNode.insertBefore(matchSpan, node.nextSibling)
-                // create a text node with the remainder text
-                remainderText = document.createTextNode(afterLinkText)
-                // add that remainder text after inserted node
-                node.parentNode.insertBefore(remainderText, node.nextSibling.nextSibling)
-                return true
-            }
-        }
-        for (const [key, value] of aliases.entries()) {
-            if (node.textContent.toLowerCase().includes(key.toLowerCase())) {
-                // iterate over the childNodes and do stuff on childNodes that 
-                // don't have the data-link-title attribute
-                start = node.textContent.toLowerCase().indexOf(key.toLowerCase())
-                end = start + key.length
-                beforeLinkText = node.textContent.slice(0, start)
-                firstCharBeforeMatch = node.textContent.slice(start - 1)[0]
-                firstCharAfterMatch = node.textContent.slice(start).substr(key.length)[0]
-                linkText = node.textContent.slice(start, end)
-                afterLinkText = node.textContent.slice(end)
-                // create span with page name
-                matchSpan = document.createElement("span")
-                matchSpan.classList.add("unlink-finder")
-                matchSpan.setAttribute("data-text", value)
-                matchSpan.style.cssText += "text-decoration: underline; text-decoration-style: dotted; position:relative;"
-                matchSpan.classList.add("alias-word-match")
-                matchSpan.setAttribute("recommend", "underline")
                 matchSpan.innerText = linkText
                 // truncate existing text node
                 node.textContent = beforeLinkText
@@ -336,11 +340,11 @@ function addUnlinkFinderLegend() {
         aliasWordMatch.innerText = "Alias";
         aliasWordMatch.style.cssText = "margin-right: 4px; text-decoration: underline; text-decoration-style: dotted; text-decoration-color: green; position:relative;";
         outerDiv.appendChild(LegendKey);
+        outerDiv.appendChild(aliasWordMatch);
         outerDiv.appendChild(exactWordMatch);
         outerDiv.appendChild(fuzzyWordMatch);
         outerDiv.appendChild(partialWordMatch);
         outerDiv.appendChild(redundantWordMatch);
-        outerDiv.appendChild(aliasWordMatch);
         var roamTopbar = document.getElementsByClassName("roam-topbar");
         roamTopbar[0].childNodes[0].insertBefore(outerDiv, roamTopbar[0].childNodes[0].childNodes[2]);
     }
