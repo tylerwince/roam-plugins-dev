@@ -5,6 +5,11 @@ function getAllPages() {
     for (i = 0; i < pageObjs.length; i++) {
         pageNames.push(window.roamAlphaAPI.pull('[:node/title]', pageObjs[i][0])[":node/title"]);
     }
+    pageNames.sort(function(a, b){
+        // ASC  -> a.length - b.length
+        // DESC -> b.length - a.length
+        return b.length - a.length;
+    });
     return pageNames
 }
 
@@ -105,10 +110,6 @@ function runUnlinkFinder() {
 }
 
 function unlinkFinder() {
-    if (document.title == "roam/js") {
-        console.log("DON'T DO IT ON THIS PAGE")
-        return
-    }
     // blocks on the page where the button is clicked
     // get all pages in the graph
     unlinkFinderPages = getAllPages();
@@ -154,7 +155,7 @@ function spanWrapper(node, pages, aliases) {
                 matchSpan = document.createElement("span")
                 matchSpan.classList.add("unlink-finder")
                 matchSpan.setAttribute("data-text", value)
-                matchSpan.style.cssText += "text-decoration: underline; text-decoration-style: dotted; text-decoration-color: green; position:relative;"
+                matchSpan.style.cssText += `background: ${aliasWordMatchStyle}`
                 matchSpan.classList.add("alias-word-match")
                 matchSpan.setAttribute("recommend", "underline")
                 matchSpan.innerText = linkText
@@ -186,23 +187,23 @@ function spanWrapper(node, pages, aliases) {
                 // create span with page name
                 matchSpan = document.createElement("span")
                 matchSpan.classList.add("unlink-finder")
-                matchSpan.style.cssText += "text-decoration: underline; text-decoration-style: dotted;"
+                matchSpan.style.cssText += `background: ${exactWordMatchStyle}`
                 matchSpan.classList.add("exact-word-match")
                 matchSpan.setAttribute("recommend", "underline")
                 if (linkText != pages[l]) {
                     matchSpan.classList.add("fuzzy-word-match")
                     matchSpan.classList.remove("exact-word-match")
-                    matchSpan.style.cssText += "text-decoration-color: gray;"
+                    matchSpan.style.cssText += `background: ${exactWordMatchStyle}`
                 }
                 if ((firstCharAfterMatch != " " && end != node.textContent.length) || (firstCharBeforeMatch != " " && start != 0)) {
                     matchSpan.classList.add("partial-word-match")
                     matchSpan.classList.remove("exact-word-match")
-                    matchSpan.style.cssText += "text-decoration-color: lightgray;"
+                    matchSpan.style.cssText += `background: ${partialWordMatchStyle}`
                 }
                 if (pageTaggedInParent(node, pages[l]) == true) {
                     matchSpan.classList.add("redundant-word-match")
                     matchSpan.classList.remove("exact-word-match")
-                    matchSpan.style.cssText += "text-decoration-color: transparent;";
+                    matchSpan.style.cssText += `background: ${redundantWordMatchStyle}`
                 }
                 matchSpan.innerText = linkText
                 // truncate existing text node
@@ -267,27 +268,27 @@ function reAddUnlinkTargets() {
         if (targetNodes[i].classList.contains("exact-word-match-inactive")) {
             targetNodes[i].classList.remove("exact-word-match-inactive");
             targetNodes[i].classList.add("exact-word-match");
-            targetNodes[i].style.cssText = "text-decoration: underline; text-decoration-style: dotted;";
+            targetNodes[i].style.cssText = `background: ${exactWordMatchStyle}`
         }
         if (targetNodes[i].classList.contains("fuzzy-word-match-inactive")) {
             targetNodes[i].classList.remove("fuzzy-word-match-inactive");
             targetNodes[i].classList.add("fuzzy-word-match");
-            targetNodes[i].style.cssText = "text-decoration: underline; text-decoration-style: dotted; text-decoration-color: gray;";
+            targetNodes[i].style.cssText = `background: ${fuzzyWordMatchStyle}`
         }
         if (targetNodes[i].classList.contains("partial-word-match-inactive")) {
             targetNodes[i].classList.remove("partial-word-match-inactive");
             targetNodes[i].classList.add("partial-word-match");
-            targetNodes[i].style.cssText = "text-decoration: underline; text-decoration-style: dotted; text-decoration-color: lightgray;";
+            targetNodes[i].style.cssText = `background: ${partialWordMatchStyle}`
         }
         if (targetNodes[i].classList.contains("redundant-word-match-inactive")) {
             targetNodes[i].classList.remove("redundant-word-match-inactive");
             targetNodes[i].classList.add("redundant-word-match");
-            targetNodes[i].style.cssText = "text-decoration: underline; text-decoration-style: dotted; text-decoration-color: transparent";
+            targetNodes[i].style.cssText = `background: ${redundantWordMatchStyle}`
         }
         if (targetNodes[i].classList.contains("alias-word-match-inactive")) {
             targetNodes[i].classList.remove("alias-word-match-inactive");
             targetNodes[i].classList.add("alias-word-match");
-            targetNodes[i].style.cssText = "text-decoration: underline; text-decoration-style: dotted; position:relative";
+            targetNodes[i].style.cssText = `background: ${aliasWordMatchStyle}`
         }
     }
 }
@@ -313,32 +314,32 @@ function addUnlinkFinderLegend() {
         exactWordMatch.classList.add('exact-word-match');
         exactWordMatch.classList.add('unlink-finder');
         exactWordMatch.innerText = "Exact";
-        exactWordMatch.style.cssText = "margin-right: 4px; text-decoration: underline; text-decoration-style: dotted;";
+        exactWordMatch.style.cssText = `margin-right: 4px; background: ${exactWordMatchStyle}`
         var fuzzyWordMatch = document.createElement('span');
         fuzzyWordMatch.classList.add('unlink-finder-legend');
         fuzzyWordMatch.classList.add('fuzzy-word-match');
         fuzzyWordMatch.classList.add('unlink-finder');
         fuzzyWordMatch.innerText = "Fuzzy";
-        fuzzyWordMatch.style.cssText = "margin-right: 4px; text-decoration: underline; text-decoration-style: dotted; text-decoration-color: gray;";
+        fuzzyWordMatch.style.cssText = `margin-right: 4px; background: ${fuzzyWordMatchStyle}`
         var partialWordMatch = document.createElement('span');
         partialWordMatch.classList.add('unlink-finder-legend');
         partialWordMatch.classList.add('partial-word-match');
         partialWordMatch.classList.add('unlink-finder');
         partialWordMatch.innerText = "Partial";
-        partialWordMatch.style.cssText = "margin-right: 4px; text-decoration: underline; text-decoration-style: dotted; text-decoration-color: lightgray;";
+        partialWordMatch.style.cssText = `margin-right: 4px; background: ${partialWordMatchStyle}`
         var redundantWordMatch = document.createElement('span');
         redundantWordMatch.classList.add('unlink-finder-legend');
         redundantWordMatch.classList.add('redundant-word-match');
         redundantWordMatch.classList.add('unlink-finder');
         redundantWordMatch.innerText = "Redundant";
-        redundantWordMatch.style.cssText = "margin-right: 4px; text-decoration: underline; text-decoration-style: dotted; text-decoration-color: transparent;";
+        redundantWordMatch.style.cssText = `margin-right: 4px; background: ${redundantWordMatchStyle}`
         var aliasWordMatch = document.createElement('span');
         aliasWordMatch.classList.add('unlink-finder-legend');
         aliasWordMatch.classList.add('alias-word-match');
         aliasWordMatch.classList.add('unlink-finder');
         aliasWordMatch.setAttribute("data-text", "Actual Page Name")
         aliasWordMatch.innerText = "Alias";
-        aliasWordMatch.style.cssText = "margin-right: 4px; text-decoration: underline; text-decoration-style: dotted; text-decoration-color: green; position:relative;";
+        aliasWordMatch.style.cssText = `margin-right: 4px; background: ${aliasWordMatchStyle}`
         outerDiv.appendChild(LegendKey);
         outerDiv.appendChild(aliasWordMatch);
         outerDiv.appendChild(exactWordMatch);
@@ -348,6 +349,13 @@ function addUnlinkFinderLegend() {
         var roamTopbar = document.getElementsByClassName("roam-topbar");
         roamTopbar[0].childNodes[0].insertBefore(outerDiv, roamTopbar[0].childNodes[0].childNodes[2]);
     }
+}
+
+function setStyles(matchType, defaultStyle) {
+    if (getCSSProp(document.documentElement, matchType) == "") {
+        document.documentElement.style.setProperty(matchType, defaultStyle);
+    };
+    return getCSSProp(document.documentElement, matchType);
 }
 
 function unlinkFinderButton() {
@@ -367,6 +375,13 @@ function unlinkFinderButton() {
     unlinkFinderIcon.onclick = unlinkFinder;
 }
 
+getCSSProp = (element, propName) => getComputedStyle(element).getPropertyValue(propName);
+
 if (document.getElementById("unlinkFinderIcon") == null) {
-    unlinkFinderButton()
+    aliasWordMatchStyle = setStyles("--alias-word-match", "rgba(125, 188, 255, 0.6)")
+    exactWordMatchStyle = setStyles("--exact-word-match", "rgba(71,151, 101, 0.4)")
+    fuzzyWordMatchStyle = setStyles("--fuzzy-word-match", "rgba(220, 171, 121, 0.6)")
+    partialWordMatchStyle = setStyles("--partial-word-match", "rgba(229, 233, 236, 1.0)")
+    redundantWordMatchStyle = setStyles("--redundant-word-match", "rgba(168, 42, 42, 0.4)")
+    unlinkFinderButton();
 }
