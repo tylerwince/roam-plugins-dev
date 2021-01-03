@@ -155,7 +155,7 @@ function spanWrapper(node, pages, aliases) {
                 matchSpan = document.createElement("span")
                 matchSpan.classList.add("unlink-finder")
                 matchSpan.setAttribute("data-text", value)
-                matchSpan.style.cssText += `background: ${aliasWordMatchStyle}`
+                matchSpan.style.cssText += ` position: relative; background: ${aliasWordMatchStyle}`
                 matchSpan.classList.add("alias-word-match")
                 matchSpan.setAttribute("recommend", "underline")
                 matchSpan.innerText = linkText
@@ -193,7 +193,7 @@ function spanWrapper(node, pages, aliases) {
                 if (linkText != pages[l]) {
                     matchSpan.classList.add("fuzzy-word-match")
                     matchSpan.classList.remove("exact-word-match")
-                    matchSpan.style.cssText += `background: ${exactWordMatchStyle}`
+                    matchSpan.style.cssText += `background: ${fuzzyWordMatchStyle}`
                 }
                 if ((firstCharAfterMatch != " " && end != node.textContent.length) || (firstCharBeforeMatch != " " && start != 0)) {
                     matchSpan.classList.add("partial-word-match")
@@ -288,7 +288,7 @@ function reAddUnlinkTargets() {
         if (targetNodes[i].classList.contains("alias-word-match-inactive")) {
             targetNodes[i].classList.remove("alias-word-match-inactive");
             targetNodes[i].classList.add("alias-word-match");
-            targetNodes[i].style.cssText = `background: ${aliasWordMatchStyle}`
+            targetNodes[i].style.cssText = ` position: relative; background: ${aliasWordMatchStyle}`
         }
     }
 }
@@ -339,7 +339,7 @@ function addUnlinkFinderLegend() {
         aliasWordMatch.classList.add('unlink-finder');
         aliasWordMatch.setAttribute("data-text", "Actual Page Name")
         aliasWordMatch.innerText = "Alias";
-        aliasWordMatch.style.cssText = `margin-right: 4px; background: ${aliasWordMatchStyle}`
+        aliasWordMatch.style.cssText = `margin-right: 4px; position:relative; background: ${aliasWordMatchStyle}`
         outerDiv.appendChild(LegendKey);
         outerDiv.appendChild(aliasWordMatch);
         outerDiv.appendChild(exactWordMatch);
