@@ -267,7 +267,8 @@ function spanWrapper(node, pages, aliases) {
                     matchSpan.setAttribute("data-text", pages[l]);
                     matchSpan.style.cssText += `position:relative; background: ${fuzzyWordMatchStyle}`;
                 };
-                if ((firstCharAfterMatch != " " && end != node.textContent.length) || (firstCharBeforeMatch != " " && start != 0)) {
+                if ((![".", " ", ",", "-", "!", "?", "_", "/"].includes(firstCharAfterMatch) && end != node.textContent.length) ||
+                    (![".", " ", ",", "-", "!", "?", "_", "/"].includes(firstCharBeforeMatch) && start != 0)) {
                     matchSpan.classList.add("partial-word-match");
                     matchSpan.classList.remove("exact-word-match");
                     matchSpan.style.cssText += `background: ${partialWordMatchStyle}`;
