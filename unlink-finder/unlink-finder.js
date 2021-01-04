@@ -4,7 +4,7 @@ function getAllPages() {
     for (i = 0; i < pageObjs.length; i++) {
         pageNames.push(window.roamAlphaAPI.pull('[:node/title]', pageObjs[i][0])[":node/title"]);
     }
-    pageNames.sort(function(a, b){
+    pageNames.sort(function (a, b) {
         return b.length - a.length;
     });
     return pageNames;
@@ -13,7 +13,10 @@ function getAllPages() {
 function getAllAliases() {
     aliasMap = new Map();
 
-    aliasPages = window.roamAlphaAPI
+    // This function is handpicked from David Vargas' roam-client.
+    // It is used to grab configuration from a Roam page. 
+    // You can find the whole library here: https://github.com/dvargas92495/roam-client
+    var pagesWithAliases = window.roamAlphaAPI
         .q(
             `[:find (pull ?parentPage [*]) 
               :where [?parentPage :block/children ?referencingBlock] 
@@ -22,12 +25,22 @@ function getAllAliases() {
              ]`
         )
         .map((p) => p[0]);
+    // This function is handpicked from David Vargas' roam-client.
+    // It is used to grab configuration from a Roam page. 
+    // You can find the whole library here: https://github.com/dvargas92495/roam-client
+    var uidWithAliases = pagesWithAliases.map((p) => ({
+        title: p.title,
+        uid: p.uid,
+        aliases:
+            getConfigFromPage(p.title)
+                ?.Aliases?.split(",")
+                ?.map((a) => a.trim()) || [],
+    }));
 
-    for (i = 0; i < aliasPages.length; i++) {
+    for (i = 0; i < uidWithAliases.length; i++) {
         try {
-            aliases = aliasPages[i].attrs[0][2].value.split(",");
-            for (j = 0; j < aliases.length; j++) {
-                aliasMap.set(aliases[j].trim(), aliasPages[i].title);
+            for (j = 0; j < uidWithAliases[i].aliases.length; j++) {
+                aliasMap.set(uidWithAliases[i].aliases[j].trim(), uidWithAliases[i].title);
             };
         }
         catch (err) {
@@ -35,6 +48,54 @@ function getAllAliases() {
         };
     };
     return aliasMap;
+};
+
+// This function is handpicked from David Vargas' roam-client.
+// It is used to grab configuration from a Roam page. 
+// You can find the whole library here: https://github.com/dvargas92495/roam-client
+const toAttributeValue = (s) =>
+    (s.trim().startsWith("{{or: ")
+        ? s.substring("{{or: ".length, s.indexOf("|"))
+        : s
+    ).trim();
+
+// This function is handpicked from David Vargas' roam-client.
+// It is used to grab configuration from a Roam page. 
+// You can find the whole library here: https://github.com/dvargas92495/roam-client
+const getAttrConfigFromQuery = (query) => {
+    const pageResults = window.roamAlphaAPI.q(query);
+    if (pageResults.length === 0 || !pageResults[0][0].attrs) {
+        return {};
+    }
+
+    const configurationAttrRefs = pageResults[0][0].attrs.map(
+        (a) => a[2].source[1]
+    );
+    const entries = configurationAttrRefs.map(
+        (r) =>
+            window.roamAlphaAPI
+                .q(
+                    `[:find (pull ?e [:block/string]) :where [?e :block/uid "${r}"] ]`
+                )[0][0]
+                .string?.split("::")
+                .map(toAttributeValue) || [r, "undefined"]
+    );
+    return Object.fromEntries(entries);
+};
+
+// This function is handpicked from David Vargas' roam-client.
+// It is used to grab configuration from a Roam page. 
+// You can find the whole library here: https://github.com/dvargas92495/roam-client
+const getConfigFromPage = (inputPage) => {
+    const page =
+        inputPage ||
+        document.getElementsByClassName("rm-title-display")[0]?.textContent;
+    if (!page) {
+        return {};
+    }
+    return getAttrConfigFromQuery(
+        `[:find (pull ?e [*]) :where [?e :node/title "${page}"] ]`
+    );
 };
 
 function pageTaggedInParent(node, page) {
@@ -113,6 +174,17 @@ function unlinkFinder() {
     // get all pages in the graph
     unlinkFinderPages = getAllPages();
     unlinkFinderAliases = getAllAliases();
+    unlinkFinderConfig = getConfigFromPage("Unlink Finder");
+    if (unlinkFinderConfig["Minimum Characters"]) {
+        minimumPageLength = parseInt(unlinkFinderConfig["Minimum Characters"]);
+    } else {
+        minimumPageLength = 2
+    }
+    if (unlinkFinderConfig["Alias Case-Sensitive"] == "Y") {
+        aliasCaseSensitive = true
+    } else {
+        aliasCaseSensitive = false
+    }
     matchFound = false;
 
     if (document.getElementById("unlink-finder-icon").getAttribute("status") == "off") {
@@ -135,7 +207,12 @@ function unlinkFinder() {
 function spanWrapper(node, pages, aliases) {
     try {
         for (const [key, value] of aliases.entries()) {
-            if (node.textContent.toLowerCase().includes(key.toLowerCase())) {
+            aliasKey = key.toLowerCase();
+            if (aliasCaseSensitive) {
+                aliasKey = key;
+            };
+            if ((aliasCaseSensitive && node.textContent.includes(key)) ||
+                (!aliasCaseSensitive && node.textContent.toLowerCase().includes(key.toLowerCase()))) {
                 // iterate over the childNodes and do stuff on childNodes that 
                 // don't have the data-link-title attribute
                 start = node.textContent.toLowerCase().indexOf(key.toLowerCase());
@@ -165,7 +242,7 @@ function spanWrapper(node, pages, aliases) {
             };
         };
         for (l = 0; l < pages.length; l++) {
-            if (pages[l].length < 2) {
+            if (pages[l].length < minimumPageLength) {
                 continue;
             }
             if (node.textContent.toLowerCase().includes(pages[l].toLowerCase())) {
