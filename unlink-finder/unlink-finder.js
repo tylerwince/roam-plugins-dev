@@ -463,7 +463,7 @@ function setupUnlinkFinderContextMenu() {
 // TODO: get the right matched item if there are many matches of the same element in the block
 function linkUsingReference(el) {
     actualPageName = el.getAttribute("data-text");
-    el.innerText = "[[" + el.innerText + "]]"
+    el.innerText = "[[" + actualPageName + "]]"
     futureText = el.parentElement.innerText
     blockUid = el.parentNode.parentNode.id.slice(-9);
     removeUnlinkSpans(el.parentNode);
