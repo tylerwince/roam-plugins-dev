@@ -463,20 +463,18 @@ function setupUnlinkFinderContextMenu() {
 // TODO: get the right matched item if there are many matches of the same element in the block
 function linkUsingReference(el) {
     actualPageName = el.getAttribute("data-text");
-    matchedSection = el.innerText;
+    el.innerText = "[[" + el.innerText + "]]"
+    futureText = el.parentElement.innerText
     blockUid = el.parentNode.parentNode.id.slice(-9);
-    currentText = window.roamAlphaAPI.q(`[:find (pull ?e [:block/string]) :where [?e :block/uid "${blockUid}"]]`)[0][0]["string"]
-    futureText = currentText.replace(matchedSection, "[[" + actualPageName + "]]");
     removeUnlinkSpans(el.parentNode);
     window.roamAlphaAPI.updateBlock({ "block": { "uid": blockUid, "string": futureText } });
 }
 
 function linkUsingAlias(el) {
     actualPageName = el.getAttribute("data-text");
-    matchedSection = el.innerText;
+    el.innerText = "[" + el.innerText + "]" + "([[" + actualPageName + "]])"
+    futureText = el.parentElement.innerText
     blockUid = el.parentNode.parentNode.id.slice(-9);
-    currentText = window.roamAlphaAPI.q(`[:find (pull ?e [:block/string]) :where [?e :block/uid "${blockUid}"]]`)[0][0]["string"]
-    futureText = currentText.replace(matchedSection, "[" + matchedSection + "]([[" + actualPageName + "]])");
     removeUnlinkSpans(el.parentNode);
     window.roamAlphaAPI.updateBlock({ "block": { "uid": blockUid, "string": futureText } });
 }
