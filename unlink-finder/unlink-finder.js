@@ -459,22 +459,50 @@ function setupUnlinkFinderContextMenu() {
     }
 }
 
+function countOfPreviousMatches(el) {
+    let matchedWord = el.innerText;
+    let count = 1;
+    while (el.previousSibling != null) {
+        if (el.previousSibling.textContent.includes(matchedWord)) {
+            count += 1;
+        };
+        el = el.previousSibling;
+    };
+    return count;
+}
+
+
+function replaceMatchedWord(count, text, matchedWord, futureWord) {
+    var t = 0;
+    var re = new RegExp(matchedWord, "g");
+    return text.replace(re, function (match) {
+        t++;
+        return (t === count) ? futureWord : match;
+    });
+}
+
 
 // TODO: get the right matched item if there are many matches of the same element in the block
 function linkUsingReference(el) {
-    actualPageName = el.getAttribute("data-text");
-    el.innerText = "[[" + actualPageName + "]]"
-    futureText = el.parentElement.innerText
+    let actualPageName = el.getAttribute("data-text");
+    let matchedWord = el.innerText;
+    let futureWord = "[[" + actualPageName + "]]"
+    locationOfMatchedWord = countOfPreviousMatches(el);
     blockUid = el.parentNode.parentNode.id.slice(-9);
+    let currentText = window.roamAlphaAPI.q(`[:find (pull ?e [:block/string]) :where [?e :block/uid "${blockUid}"]]`)[0][0].string
+    let futureText = replaceMatchedWord(locationOfMatchedWord, currentText, matchedWord, futureWord)
     removeUnlinkSpans(el.parentNode);
     window.roamAlphaAPI.updateBlock({ "block": { "uid": blockUid, "string": futureText } });
 }
 
 function linkUsingAlias(el) {
-    actualPageName = el.getAttribute("data-text");
-    el.innerText = "[" + el.innerText + "]" + "([[" + actualPageName + "]])"
-    futureText = el.parentElement.innerText
+    let actualPageName = el.getAttribute("data-text");
+    let matchedWord = el.innerText;
+    let futureWord = "[" + matchedWord + "]([[" + actualPageName + "]])"
+    locationOfMatchedWord = countOfPreviousMatches(el);
     blockUid = el.parentNode.parentNode.id.slice(-9);
+    let currentText = window.roamAlphaAPI.q(`[:find (pull ?e [:block/string]) :where [?e :block/uid "${blockUid}"]]`)[0][0].string
+    let futureText = replaceMatchedWord(locationOfMatchedWord, currentText, matchedWord, futureWord)
     removeUnlinkSpans(el.parentNode);
     window.roamAlphaAPI.updateBlock({ "block": { "uid": blockUid, "string": futureText } });
 }
