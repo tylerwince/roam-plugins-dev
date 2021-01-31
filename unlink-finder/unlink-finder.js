@@ -610,8 +610,8 @@ function addUnlinkFinderLegend() {
         unlinkFinderLegend.appendChild(fuzzyWordMatch);
         unlinkFinderLegend.appendChild(partialWordMatch);
         unlinkFinderLegend.appendChild(redundantWordMatch);
-        var roamTopbar = document.getElementsByClassName("roam-topbar");
-        roamTopbar[0].childNodes[0].childNodes[0].insertBefore(unlinkFinderLegend, roamTopbar[0].childNodes[0].childNodes[0].childNodes[2]);
+        var roamTopbar = document.getElementsByClassName("rm-topbar");
+        roamTopbar[0].insertBefore(unlinkFinderLegend, roamTopbar[0].childNodes[2]);
     }
 }
 
@@ -628,7 +628,7 @@ function unlinkFinderButton() {
     unlinkFinderIcon.classList.add('bp3-icon-search-around', 'bp3-button', 'bp3-minimal', 'bp3-small');
     spanTwo.appendChild(unlinkFinderIcon);
     var roamTopbar = document.getElementsByClassName("rm-topbar");
-    roamTopbar[0].childNodes[0].childNodes[0].appendChild(unlinkFinderButton);
+    roamTopbar[0].appendChild(unlinkFinderButton);
     unlinkFinderIcon.onclick = unlinkFinder;
 };
 
