@@ -627,7 +627,7 @@ function unlinkFinderButton() {
     unlinkFinderIcon.setAttribute("status", "off")
     unlinkFinderIcon.classList.add('bp3-icon-search-around', 'bp3-button', 'bp3-minimal', 'bp3-small');
     spanTwo.appendChild(unlinkFinderIcon);
-    var roamTopbar = document.getElementsByClassName("roam-topbar");
+    var roamTopbar = document.getElementsByClassName("rm-topbar");
     roamTopbar[0].childNodes[0].childNodes[0].appendChild(unlinkFinderButton);
     unlinkFinderIcon.onclick = unlinkFinder;
 };
